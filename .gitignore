@@ -1,0 +1,8 @@
+# This file gets automatically generated
+./info.py
+
+# Don't commit compiled python
+*.pyc
+
+# Or built plugins
+*.egplugin
