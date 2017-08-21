@@ -100,7 +100,7 @@ class showTip(eg.ActionBase):
         # Window destruction is taken care of in the parent class
 
     def GetLabel(self, title, msg, payload):
-        return "\"{}\" ({})".format(title, msg)
+        return "\"{}\" ({}) {}".format(title, msg, repr(payload))
 
     def Configure(self, title="", msg="", payload=""):
         panel = eg.ConfigPanel(self)
