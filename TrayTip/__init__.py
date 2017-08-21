@@ -63,7 +63,7 @@ class showTip(eg.ActionBase):
 
     def __call__(self, title="", msg=""):
         title = eg.ParseString(title or "EventGhost")
-        msg = eg.ParseString(msg or "")
+        msg = eg.ParseString(msg or "This is a notification from EventGhost.")
 
         # https://stackoverflow.com/a/17262942/6692652
         # Create the window.
@@ -92,7 +92,7 @@ class showTip(eg.ActionBase):
         # Window destruction is taken care of in the parent class
 
     def GetLabel(self, title, msg):
-        return "{}: {}".format(title, msg)
+        return "\"{}\" ({})".format(title, msg)
 
     def Configure(self, title="", msg=""):
         panel = eg.ConfigPanel(self)
