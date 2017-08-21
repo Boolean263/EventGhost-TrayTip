@@ -13,8 +13,6 @@ eg.RegisterPlugin(
 )
 
 import wx
-
-
 import win32api
 import win32gui
 import win32con
@@ -71,6 +69,8 @@ class showTip(eg.ActionBase):
     def __call__(self, title="", msg="", payload=None):
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
+        if payload:
+            payload = eg.ParseString(payload)
 
         # https://stackoverflow.com/a/17262942/6692652
         # Create the window.
@@ -80,10 +80,10 @@ class showTip(eg.ActionBase):
         self.plugin.setPayload(hwnd, payload)
 
         # Icons managment
-        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
         iconPathName = None # for now
         try:
             if iconPathName:
+                icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
                 hicon = win32gui.LoadImage(self.plugin.hinst, 0, win32con.IMAGE_ICON, 0, 0, icon_flags)
             else:
                 hicon = win32gui.CreateIconFromResource(win32api.LoadResource(None, win32con.RT_ICON, 1), True)
