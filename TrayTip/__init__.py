@@ -16,7 +16,10 @@ eg.RegisterPlugin(
 # https://stackoverflow.com/a/17262942/6692652
 from .WindowsBalloonTip import WindowsBalloonTip
 
+from threading import Thread
 import wx
+import sys
+import os.path
 
 class TrayTip(eg.PluginBase):
 
@@ -27,11 +30,13 @@ class showTip(eg.ActionBase):
     name = "Show system message"
     description = "Shows a message in the Windows Action Center."
 
-    def __call__(self, title="", msg=""):
+    def __call__(self, title="", msg="", icon=None):
         title = eg.ParseString(title)
         msg = eg.ParseString(msg)
 
-        WindowsBalloonTip(title, msg)
+        # EventGhost freezes if we call WindowsBallonTip directly.
+        # Is it bad that we never join() this thread?
+        Thread(target=WindowsBalloonTip, args=(title, msg, icon)).start()
 
     def GetLabel(self, title, msg):
         return "{}: {}".format(title, msg)

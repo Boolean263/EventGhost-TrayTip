@@ -10,7 +10,7 @@ import time
 
 # Class
 class WindowsBalloonTip:
-    def __init__(self, title, msg):
+    def __init__(self, title, msg, iconPathName=None):
         message_map = { win32con.WM_DESTROY: self.OnDestroy,}
 
         # Register the window class.
@@ -26,10 +26,12 @@ class WindowsBalloonTip:
         UpdateWindow(self.hwnd)
 
         # Icons managment
-        iconPathName = os.path.abspath(os.path.join( sys.path[0], 'balloontip.ico' ))
         icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
         try:
-            hicon = LoadImage(hinst, iconPathName, win32con.IMAGE_ICON, 0, 0, icon_flags)
+            if iconPathName:
+                hicon = LoadImage(hinst, 0, win32con.IMAGE_ICON, 0, 0, icon_flags)
+            else:
+                hicon = CreateIconFromResource(LoadResource(None, win32con.RT_ICON, 1), True)
         except:
             hicon = LoadIcon(0, win32con.IDI_APPLICATION)
         flags = NIF_ICON | NIF_MESSAGE | NIF_TIP
