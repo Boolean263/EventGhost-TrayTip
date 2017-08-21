@@ -38,8 +38,9 @@ class WindowsBalloonTip:
         nid = (self.hwnd, 0, flags, win32con.WM_USER+20, hicon, 'Tooltip')
 
         # Notify
+        dwInfoFlags = 0x24 # NIIF_USER|NIIF_LARGE_ICON - not defined in win32con?
         Shell_NotifyIcon(NIM_ADD, nid)
-        Shell_NotifyIcon(NIM_MODIFY, (self.hwnd, 0, NIF_INFO, win32con.WM_USER+20, hicon, 'Balloon Tooltip', msg, 200, title))
+        Shell_NotifyIcon(NIM_MODIFY, (self.hwnd, 0, NIF_INFO, win32con.WM_USER+20, hicon, 'Balloon Tooltip', msg, 200, title, dwInfoFlags))
         # self.show_balloon(title, msg)
         time.sleep(5)
 

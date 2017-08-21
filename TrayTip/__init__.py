@@ -31,12 +31,13 @@ class showTip(eg.ActionBase):
     description = "Shows a message in the Windows Action Center."
 
     def __call__(self, title="", msg="", icon=None):
-        title = eg.ParseString(title)
-        msg = eg.ParseString(msg)
+        title = eg.ParseString(title or "EventGhost")
+        msg = eg.ParseString(msg or "")
 
         # EventGhost freezes if we call WindowsBallonTip directly.
-        # Is it bad that we never join() this thread?
-        Thread(target=WindowsBalloonTip, args=(title, msg, icon)).start()
+        t = Thread(target=WindowsBalloonTip, args=(title, msg, icon))
+        t.daemon = True
+        t.start()
 
     def GetLabel(self, title, msg):
         return "{}: {}".format(title, msg)
