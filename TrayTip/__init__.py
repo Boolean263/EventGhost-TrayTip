@@ -21,52 +21,28 @@ import win32con
 import winerror
 import sys, os
 
-# The WindowsBalloonTip class is adapted from this stackoverflow post:
-# https://stackoverflow.com/a/17262942/6692652
-class WindowsBalloonTip:
-    def __init__(self, title, msg, iconPathName=None):
-        message_map = {
-                win32con.WM_DESTROY: self.OnDestroy,
-                win32con.WM_USER+20: self.OnNotify,
-        }
+class TrayTip(eg.PluginBase):
 
+    def __init__(self):
+        self.AddAction(showTip)
+
+    def __start__(self):
+        message_map = {
+            win32con.WM_DESTROY: self.OnDestroy,
+            win32con.WM_USER+20: self.OnNotify,
+        }
         # Register the window class.
         wc = win32gui.WNDCLASS()
         self.hinst = wc.hInstance = win32api.GetModuleHandle(None)
         wc.lpszClassName = 'PythonTaskbar'
         wc.lpfnWndProc = message_map # could also specify a wndproc.
-        self.classAtom = None
-        try:
-            self.classAtom = win32gui.RegisterClass(wc)
-        except win32gui.error, err_info:
-            if err_info.winerror != winerror.ERROR_CLASS_ALREADY_EXISTS:
-                raise
+        self.classAtom = win32gui.RegisterClass(wc)
 
-        # Create the window.
-        style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
-        self.hwnd = win32gui.CreateWindow(self.classAtom, "Taskbar", style, 0, 0, win32con.CW_USEDEFAULT, win32con.CW_USEDEFAULT, 0, 0, self.hinst, None)
-        win32gui.UpdateWindow(self.hwnd)
-
-        # Icons managment
-        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
-        try:
-            if iconPathName:
-                hicon = win32gui.LoadImage(self.hinst, 0, win32con.IMAGE_ICON, 0, 0, icon_flags)
-            else:
-                hicon = win32gui.CreateIconFromResource(LoadResource(None, win32con.RT_ICON, 1), True)
-        except:
-            hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
-        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
-        nid = (self.hwnd, 0, flags, win32con.WM_USER+20, hicon, 'Tooltip')
-
-        # Notify
-        dwInfoFlags = 0x24 # NIIF_USER|NIIF_LARGE_ICON - not defined in win32con?
-        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
-        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, (self.hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20, hicon, 'Balloon Tooltip', msg, 200, title, dwInfoFlags))
+    def __stop__(self):
+        self.classAtom = win32gui.UnregisterClass(self.classAtom, self.hinst)
 
     def OnDestroy(self, hwnd, msg, wparam, lparam):
-        nid = (self.hwnd, 0)
-        #eg.PrintNotice("Destroy: msg={:08X} wparam={:08X} lparam={:08X}".format(msg, wparam, lparam))
+        nid = (hwnd, 0)
         win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
 
     def OnNotify(self, hwnd, msg, wparam, lparam):
@@ -76,26 +52,44 @@ class WindowsBalloonTip:
         # 0x0404: the notification vanishes (on its own?)
         # 0x0405: disappeared by click
         if lparam == 0x0405:
-            eg.TriggerEvent("Clicked", payload=None, prefix="TrayTip")
+            eg.TriggerEvent("Clicked", payload=None, prefix='TrayTip')
         if lparam == 0x0404 or lparam == 0x0405:
-            win32gui.DestroyWindow(self.hwnd)
-            self.classAtom = win32gui.UnregisterClass(self.classAtom, self.hinst)
-
-
-class TrayTip(eg.PluginBase):
-
-    def __init__(self):
-        self.AddAction(showTip)
+            win32gui.DestroyWindow(hwnd)
 
 class showTip(eg.ActionBase):
     name = "Show system message"
     description = "Shows a message in the Windows Action Center."
 
-    def __call__(self, title="", msg="", icon=None):
+
+    def __call__(self, title="", msg=""):
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "")
 
-        WindowsBalloonTip(title, msg, icon)
+        # https://stackoverflow.com/a/17262942/6692652
+        # Create the window.
+        style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
+        hwnd = win32gui.CreateWindow(self.plugin.classAtom, "Taskbar", style, 0, 0, win32con.CW_USEDEFAULT, win32con.CW_USEDEFAULT, 0, 0, self.plugin.hinst, None)
+        win32gui.UpdateWindow(hwnd)
+
+        # Icons managment
+        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+        iconPathName = None # for now
+        try:
+            if iconPathName:
+                hicon = win32gui.LoadImage(self.plugin.hinst, 0, win32con.IMAGE_ICON, 0, 0, icon_flags)
+            else:
+                hicon = win32gui.CreateIconFromResource(win32api.LoadResource(None, win32con.RT_ICON, 1), True)
+        except:
+            hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+        nid = (hwnd, 0, flags, win32con.WM_USER+20, hicon, 'Tooltip')
+
+        # Notify
+        dwInfoFlags = 0x24 # NIIF_USER|NIIF_LARGE_ICON - not defined in win32con?
+        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, (hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20, hicon, 'Balloon Tooltip', msg, 200, title, dwInfoFlags))
+
+        # Window destruction is taken care of in the parent class
 
     def GetLabel(self, title, msg):
         return "{}: {}".format(title, msg)
@@ -118,6 +112,7 @@ class showTip(eg.ActionBase):
                 titleCtrl.GetValue(),
                 msgCtrl.GetValue(),
             )
+
 
 #
 # Editor modelines  -  https://www.wireshark.org/tools/modelines.html
