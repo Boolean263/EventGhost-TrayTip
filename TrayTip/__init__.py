@@ -22,28 +22,32 @@ import winerror
 import sys, os
 
 class TrayTip(eg.PluginBase):
+    payloads = {}
 
     def __init__(self):
         self.AddAction(showTip)
 
     def __start__(self):
-        message_map = {
-            win32con.WM_DESTROY: self.OnDestroy,
-            win32con.WM_USER+20: self.OnNotify,
-        }
         # Register the window class.
         wc = win32gui.WNDCLASS()
         self.hinst = wc.hInstance = win32api.GetModuleHandle(None)
-        wc.lpszClassName = 'PythonTaskbar'
-        wc.lpfnWndProc = message_map # could also specify a wndproc.
+        wc.lpszClassName = 'EventGhostTrayTip'
+        wc.lpfnWndProc = {
+            win32con.WM_DESTROY: self.OnDestroy,
+            win32con.WM_USER+20: self.OnNotify,
+        }
         self.classAtom = win32gui.RegisterClass(wc)
 
     def __stop__(self):
         self.classAtom = win32gui.UnregisterClass(self.classAtom, self.hinst)
 
+    def setPayload(self, hwnd, payload=None):
+        self.payloads[hwnd] = payload
+
     def OnDestroy(self, hwnd, msg, wparam, lparam):
         nid = (hwnd, 0)
         win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+        del self.payloads[hwnd]
 
     def OnNotify(self, hwnd, msg, wparam, lparam):
         #eg.PrintNotice("Notify: msg={:08X} wparam={:08X} lparam={:08X}".format(msg, wparam, lparam))
@@ -52,16 +56,19 @@ class TrayTip(eg.PluginBase):
         # 0x0404: the notification vanishes (on its own?)
         # 0x0405: disappeared by click
         if lparam == 0x0405:
-            eg.TriggerEvent("Clicked", payload=None, prefix='TrayTip')
+            try:
+                payload = self.payloads[hwnd]
+            except KeyError:
+                payload = None
+            eg.TriggerEvent("Clicked", payload=payload, prefix='TrayTip')
         if lparam == 0x0404 or lparam == 0x0405:
             win32gui.DestroyWindow(hwnd)
 
 class showTip(eg.ActionBase):
-    name = "Show system message"
+    name = "Show system tray message"
     description = "Shows a message in the Windows Action Center."
 
-
-    def __call__(self, title="", msg=""):
+    def __call__(self, title="", msg="", payload=None):
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
 
@@ -70,6 +77,7 @@ class showTip(eg.ActionBase):
         style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
         hwnd = win32gui.CreateWindow(self.plugin.classAtom, "Taskbar", style, 0, 0, win32con.CW_USEDEFAULT, win32con.CW_USEDEFAULT, 0, 0, self.plugin.hinst, None)
         win32gui.UpdateWindow(hwnd)
+        self.plugin.setPayload(hwnd, payload)
 
         # Icons managment
         icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
@@ -91,19 +99,22 @@ class showTip(eg.ActionBase):
 
         # Window destruction is taken care of in the parent class
 
-    def GetLabel(self, title, msg):
+    def GetLabel(self, title, msg, payload):
         return "\"{}\" ({})".format(title, msg)
 
-    def Configure(self, title="", msg=""):
+    def Configure(self, title="", msg="", payload=""):
         panel = eg.ConfigPanel(self)
         titleCtrl = panel.TextCtrl(title)
         msgCtrl = panel.TextCtrl(msg)
+        payloadCtrl = panel.TextCtrl(payload)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(panel.StaticText("Title"))
         sizer.Add(titleCtrl, 0, wx.EXPAND|wx.TOP)
         sizer.Add(panel.StaticText("Message"))
         sizer.Add(msgCtrl, 0, wx.EXPAND|wx.TOP)
+        sizer.Add(panel.StaticText("Event payload if clicked (optional)"))
+        sizer.Add(payloadCtrl, 0, wx.EXPAND|wx.TOP)
 
         panel.sizer.Add(sizer, 0, wx.EXPAND|wx.ALL, 10)
 
@@ -111,6 +122,7 @@ class showTip(eg.ActionBase):
             panel.SetResult(
                 titleCtrl.GetValue(),
                 msgCtrl.GetValue(),
+                payloadCtrl.GetValue(),
             )
 
 
