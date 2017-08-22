@@ -19,6 +19,11 @@ import win32con
 import winerror
 import sys, os
 
+WM_TRAYICON = win32con.WM_USER + 20
+NIN_BALLOONSHOW = win32con.WM_USER + 2
+NIN_BALLOONHIDE = win32con.WM_USER + 3
+NIN_BALLOONTIMEOUT = win32con.WM_USER + 4
+NIN_BALLOONUSERCLICK = win32con.WM_USER + 5
 
 class Text(eg.TranslatableStrings):
     class showTip:
@@ -28,12 +33,12 @@ class Text(eg.TranslatableStrings):
         message_lbl = "Message"
         payload_lbl = "Event payload if clicked (optional)"
 
-
 class TrayTip(eg.PluginBase):
     text = Text
     payloads = {}
 
     def __init__(self):
+        self.info.eventPrefix = 'TrayTip'
         self.AddAction(showTip)
 
     def __start__(self):
@@ -43,7 +48,7 @@ class TrayTip(eg.PluginBase):
         wc.lpszClassName = 'EventGhostTrayTip'
         wc.lpfnWndProc = {
             win32con.WM_DESTROY: self.OnDestroy,
-            win32con.WM_USER+20: self.OnNotify,
+            WM_TRAYICON: self.OnNotify,
         }
         self.classAtom = win32gui.RegisterClass(wc)
 
@@ -58,20 +63,31 @@ class TrayTip(eg.PluginBase):
         win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
         del self.payloads[hwnd]
 
-    def OnNotify(self, hwnd, msg, wparam, lparam):
-        #eg.PrintNotice("Notify: msg={:08X} wparam={:08X} lparam={:08X}".format(msg, wparam, lparam))
+    def OnNotify(self, hwnd, msg, wParam, lParam):
+        # eg.PrintNotice("Notify: msg={:08X} wparam={:08X} lparam={:08X}"
+        # .format(msg, wparam, lparam))
         # Magic numbers until I learn their proper constant names:
-        # 0x0402: seems to mean the appearance of the notification
-        # 0x0404: the notification vanishes (on its own?)
-        # 0x0405: disappeared by click
-        if lparam == 0x0405:
-            try:
+
+        if msg == WM_TRAYICON:
+            if hwnd in self.payloads:
                 payload = self.payloads[hwnd]
-            except KeyError:
+            else:
                 payload = None
-            eg.TriggerEvent("Clicked", payload=payload, prefix='TrayTip')
-        if lparam == 0x0404 or lparam == 0x0405:
-            win32gui.DestroyWindow(hwnd)
+
+            if lParam == NIN_BALLOONSHOW:
+                self.TriggerEvent("Show", payload=payload)
+
+            elif lParam == NIN_BALLOONHIDE:
+                self.TriggerEvent("Hide", payload=payload)
+
+            elif lParam == NIN_BALLOONTIMEOUT:
+                self.TriggerEvent("TimedOut", payload=payload)
+                win32gui.DestroyWindow(hwnd)
+
+            elif lParam == NIN_BALLOONUSERCLICK:
+                self.TriggerEvent("Clicked", payload=payload)
+                win32gui.DestroyWindow(hwnd)
+
 
 class showTip(eg.ActionBase):
 
@@ -99,12 +115,12 @@ class showTip(eg.ActionBase):
         except:
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
         flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
-        nid = (hwnd, 0, flags, win32con.WM_USER+20, hicon, 'Tooltip')
+        nid = (hwnd, 0, flags, WM_TRAYICON, hicon, 'Tooltip')
 
         # Notify
         dwInfoFlags = 0x24 # NIIF_USER|NIIF_LARGE_ICON - not defined in win32con?
         win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
-        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, (hwnd, 0, win32gui.NIF_INFO, win32con.WM_USER+20, hicon, 'Balloon Tooltip', msg, 200, title, dwInfoFlags))
+        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, (hwnd, 0, win32gui.NIF_INFO, WM_TRAYICON, hicon, 'Balloon Tooltip', msg, 200, title, dwInfoFlags))
 
         # Window destruction is taken care of in the parent class
 
