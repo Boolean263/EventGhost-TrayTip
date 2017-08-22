@@ -19,7 +19,18 @@ import win32con
 import winerror
 import sys, os
 
+
+class Text(eg.TranslatableStrings):
+    class showTip:
+        name = "Show system tray message"
+        description = "Shows a message in the Windows Action Center."
+        title_lbl = "Title"
+        message_lbl = "Message"
+        payload_lbl = "Event payload if clicked (optional)"
+
+
 class TrayTip(eg.PluginBase):
+    text = Text
     payloads = {}
 
     def __init__(self):
@@ -63,8 +74,6 @@ class TrayTip(eg.PluginBase):
             win32gui.DestroyWindow(hwnd)
 
 class showTip(eg.ActionBase):
-    name = "Show system tray message"
-    description = "Shows a message in the Windows Action Center."
 
     def __call__(self, title="", msg="", payload=None):
         title = eg.ParseString(title or "EventGhost")
@@ -103,17 +112,19 @@ class showTip(eg.ActionBase):
         return "\"{}\" ({}) {}".format(title, msg, repr(payload))
 
     def Configure(self, title="", msg="", payload=""):
+        text = self.text
         panel = eg.ConfigPanel(self)
+
         titleCtrl = panel.TextCtrl(title)
         msgCtrl = panel.TextCtrl(msg)
         payloadCtrl = panel.TextCtrl(payload)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(panel.StaticText("Title"))
+        sizer.Add(panel.StaticText(text.title_lbl))
         sizer.Add(titleCtrl, 0, wx.EXPAND|wx.TOP)
-        sizer.Add(panel.StaticText("Message"))
+        sizer.Add(panel.StaticText(text.message_lbl))
         sizer.Add(msgCtrl, 0, wx.EXPAND|wx.TOP)
-        sizer.Add(panel.StaticText("Event payload if clicked (optional)"))
+        sizer.Add(panel.StaticText(text.payload_lbl))
         sizer.Add(payloadCtrl, 0, wx.EXPAND|wx.TOP)
 
         panel.sizer.Add(sizer, 0, wx.EXPAND|wx.ALL, 10)
