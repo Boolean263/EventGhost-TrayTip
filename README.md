@@ -46,7 +46,7 @@ be added to the payload, let me know.
 ## Downloads and Support
 
 Official releases of this plugin are being made available at
-[this thread on the EventGhost forums](http://www.eventghost.net/forum/viewtopic.php?f=9&t=???).
+[this thread on the EventGhost forums](http://www.eventghost.net/forum/viewtopic.php?f=9&t=9794).
 You can also provide feedback and request support there.
 
 I also accept issues and pull requests from the official GitHub repo for

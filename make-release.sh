@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PLUGNAME="WindowWatcher"
+PLUGNAME="TrayTip"
 SRCFILE="$PLUGNAME/__init__.py"
 sed -n -E \
     -e '1,/^eg\.RegisterPlugin/d' \
@@ -11,6 +11,8 @@ sed -n -E \
     -e '/^(name|author|version|url|guid|description)/p' \
     $SRCFILE > info.py
 VERSION=`grep ^version info.py | cut -d\' -f2`
+
+cat info.py
 
 zip -r $PLUGNAME-$VERSION.egplugin info.py $PLUGNAME \
     -x '*.pyc' -x '.*.sw*'
