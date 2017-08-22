@@ -62,7 +62,7 @@ class TrayTip(eg.PluginBase):
         if lparam == 0x0404 or lparam == 0x0405:
             win32gui.DestroyWindow(hwnd)
 
-class showTip(eg.ActionBase):
+class ShowTip(eg.ActionBase):
     name = "Show system tray message"
     description = "Shows a message in the Windows Action Center."
 
