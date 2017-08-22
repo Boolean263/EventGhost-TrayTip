@@ -115,7 +115,7 @@ class showTip(eg.ActionBase):
     def __call__(self, title="", msg="", payload=None):
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
-        if payload:
+        if payload and isinstance(payload, basestring):
             payload = eg.ParseString(payload)
 
         # https://stackoverflow.com/a/17262942/6692652
@@ -152,7 +152,9 @@ class showTip(eg.ActionBase):
                 )
             else:
                 hicon = win32gui.CreateIconFromResource(
-                    win32api.LoadResource(None, win32con.RT_ICON, 1), True)
+                    win32api.LoadResource(None, win32con.RT_ICON, 1),
+                    True
+                )
         except:
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
         flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
