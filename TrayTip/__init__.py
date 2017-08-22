@@ -26,7 +26,7 @@ eg.RegisterPlugin(
     kind="other",
     description="Show notices in the system tray.",
     url="https://github.com/Boolean263/EventGhost-TrayTip",
-    guid="{707e86ff-660f-49cd-a00a-9963a7351df0}",
+    guid="{707E86FF-660F-49CD-A00A-9963A7351DF0}",
 )
 
 import wx # NOQA
