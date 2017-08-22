@@ -62,9 +62,9 @@ This shouldn't be hard, I just haven't gotten that far yet.
 It would be really useful to create notifications that persist in the
 Windows 10 Action Center. I haven't found information on how to do that yet.
 
-## Author
+## Authors
 
-Boolean263, aka David Perry
+Boolean263, aka David Perry, and Kevin Schlosser
 
 ## Changelog
 

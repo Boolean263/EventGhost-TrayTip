@@ -4,7 +4,10 @@ import eg
 
 eg.RegisterPlugin(
     name = "TrayTip",
-    author = "David Perry <d.perry@utoronto.ca>",
+    author = (
+        "David Perry <d.perry@utoronto.ca>",
+        "kdschlosser",
+    ),
     version = "0.0.1",
     kind = "other",
     description = "Show notices in the system tray.",
