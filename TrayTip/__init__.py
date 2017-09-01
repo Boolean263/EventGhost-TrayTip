@@ -25,7 +25,7 @@ eg.RegisterPlugin(
         "David Perry <d.perry@utoronto.ca>",
         "kdschlosser",
     ),
-    version="0.0.1",
+    version="0.1.0",
     kind="other",
     description="Show notices in the system tray.",
     url="https://github.com/Boolean263/EventGhost-TrayTip",
@@ -40,20 +40,30 @@ import winerror # NOQA
 import sys # NOQA
 import os # NOQA
 
-
+# Windows constants
 WM_TRAYICON = win32con.WM_USER + 20
 NIN_BALLOONSHOW = win32con.WM_USER + 2
 NIN_BALLOONHIDE = win32con.WM_USER + 3
 NIN_BALLOONTIMEOUT = win32con.WM_USER + 4
 NIN_BALLOONUSERCLICK = win32con.WM_USER + 5
+NIIF_NONE = 0x00
+NIIF_INFO = 0x01
+NIIF_WARNING = 0x02
+NIIF_ERROR = 0x03
+NIIF_USER = 0x04
+NIIF_NOSOUND = 0x10
+NIIF_LARGE_ICON = 0x20
+NIIF_RESPECT_QUIET_TIME = 0x80
 
 class Text(eg.TranslatableStrings):
-    class showTip:
+    class ShowTip:
         name = "Show system tray message"
         description = "Shows a message in the Windows Action Center."
         title_lbl = "Title"
         message_lbl = "Message"
-        payload_lbl = "Event payload if clicked (optional)"
+        payload_lbl = "Event payload (optional)"
+        iconOpt_lbl = "Icon"
+        sound_lbl = "Play Sound"
 
 class TrayTip(eg.PluginBase):
     text = Text
@@ -61,7 +71,7 @@ class TrayTip(eg.PluginBase):
 
     def __init__(self):
         self.info.eventPrefix = 'TrayTip'
-        self.AddAction(showTip)
+        self.AddAction(ShowTip)
 
     def __start__(self):
         # Register the window class.
@@ -88,7 +98,6 @@ class TrayTip(eg.PluginBase):
     def OnNotify(self, hwnd, msg, wParam, lParam):
         # eg.PrintNotice("Notify: msg={:08X} wparam={:08X} lparam={:08X}"
         # .format(msg, wparam, lparam))
-        # Magic numbers until I learn their proper constant names:
 
         if msg == WM_TRAYICON:
             if hwnd in self.payloads:
@@ -110,9 +119,14 @@ class TrayTip(eg.PluginBase):
                 self.TriggerEvent("Clicked", payload=payload)
                 win32gui.DestroyWindow(hwnd)
 
-class showTip(eg.ActionBase):
+class ShowTip(eg.ActionBase):
+    iconOpts = ("None", "Info", "Warning", "Error", "EventGhost")
+    # Since I hate magic constants
+    ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG = range(len(iconOpts))
 
-    def __call__(self, title="", msg="", payload=None):
+    def __call__(self, title="", msg="", payload=None, iconOpt=ICON_EG, sound=True):
+        if iconOpt is None:
+            iconOpt = self.ICON_EG
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
         if payload and isinstance(payload, basestring):
@@ -138,9 +152,24 @@ class showTip(eg.ActionBase):
         self.plugin.setPayload(hwnd, payload)
 
         # Icons management
-        iconPathName = None # for now
+        # Default to no icon if something goes weird
+        hicon = None
+        dwInfoFlags = 0x00
         try:
-            if iconPathName:
+            if iconOpt == self.ICON_INFO:
+                dwInfoFlags = NIIF_INFO|NIIF_LARGE_ICON
+            elif iconOpt == self.ICON_WARNING:
+                dwInfoFlags = NIIF_WARNING|NIIF_LARGE_ICON
+            elif iconOpt == self.ICON_ERROR:
+                dwInfoFlags = NIIF_ERROR|NIIF_LARGE_ICON
+            elif iconOpt == self.ICON_EG:
+                # Get the first icon from the EventGhost executable
+                hicon = win32gui.CreateIconFromResource(
+                    win32api.LoadResource(None, win32con.RT_ICON, 1),
+                    True
+                )
+                dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
+            elif isinstance(iconOpt, basestring): #TODO
                 icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
                 hicon = win32gui.LoadImage(
                     self.plugin.hinst,
@@ -150,19 +179,14 @@ class showTip(eg.ActionBase):
                     0,
                     icon_flags
                 )
-            else:
-                hicon = win32gui.CreateIconFromResource(
-                    win32api.LoadResource(None, win32con.RT_ICON, 1),
-                    True
-                )
         except:
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+        if not sound:
+            dwInfoFlags |= NIIF_NOSOUND
         flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
         nid = (hwnd, 0, flags, WM_TRAYICON, hicon, 'Tooltip')
 
         # Notify
-        # NIIF_USER|NIIF_LARGE_ICON - not defined in win32con?
-        dwInfoFlags = 0x24
         win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
         win32gui.Shell_NotifyIcon(
             win32gui.NIM_MODIFY,
@@ -182,10 +206,10 @@ class showTip(eg.ActionBase):
 
         # Window destruction is taken care of in the parent class
 
-    def GetLabel(self, title, msg, payload):
+    def GetLabel(self, title, msg, payload, iconOpt=None, sound=True):
         return "\"{}\" ({}) {}".format(title, msg, repr(payload))
 
-    def Configure(self, title="", msg="", payload=""):
+    def Configure(self, title="", msg="", payload="", iconOpt=ICON_EG, sound=True):
         text = self.text
         panel = eg.ConfigPanel(self)
 
@@ -195,9 +219,17 @@ class showTip(eg.ActionBase):
         msg_ctrl = panel.TextCtrl(msg)
         payload_st = panel.StaticText(text.payload_lbl)
         payload_ctrl = panel.TextCtrl(payload)
+        iconOpt_st = panel.StaticText(text.iconOpt_lbl)
+        iconOpt_ctrl = panel.Choice(iconOpt, choices=self.iconOpts)
+        sound_ctrl = panel.CheckBox(sound, text.sound_lbl)
 
-        eg.EqualizeWidths((title_st, msg_st, payload_st))
+        eg.EqualizeWidths((title_st, msg_st, payload_st, iconOpt_st))
         eg.EqualizeWidths((title_ctrl, msg_ctrl, payload_ctrl))
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(iconOpt_st, 0, wx.EXPAND | wx.ALL, 5)
+        sizer.Add(iconOpt_ctrl, 0, wx.ALL, 5)
+        panel.sizer.Add(sizer, 0, wx.EXPAND)
 
         for (st, ctrl) in (
                 (title_st, title_ctrl),
@@ -209,11 +241,15 @@ class showTip(eg.ActionBase):
             sizer.Add(ctrl, 0, wx.EXPAND | wx.ALL, 5)
             panel.sizer.Add(sizer, 0, wx.EXPAND)
 
+        panel.sizer.Add(sound_ctrl)
+
         while panel.Affirmed():
             panel.SetResult(
                 title_ctrl.GetValue(),
                 msg_ctrl.GetValue(),
                 payload_ctrl.GetValue(),
+                iconOpt_ctrl.GetValue(),
+                sound_ctrl.GetValue(),
             )
 
 

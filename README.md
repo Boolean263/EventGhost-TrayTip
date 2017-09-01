@@ -22,8 +22,8 @@ most other actions. The configuration dialog prompts you for three items:
 
 * Title: this is typically shown in a large, bold font.
 * Message: some more detail about what you're telling the user.
-* Payload: an optional string payload to include in the generated event
-  (see below) if the user clicks on the notification.
+* Payload: an optional string payload to include in generated events
+  (see below)
 
 All three items are parsed for python code wrapped in {curly braces}.
 If you want to include an actual curly brace, you need to double it up,
@@ -67,6 +67,14 @@ Windows 10 Action Center. I haven't found information on how to do that yet.
 Boolean263, aka David Perry, and Kevin Schlosser
 
 ## Changelog
+
+### v0.1.0 - not yet released
+
+* TODO: update the above info before release
+* Improvements from kgschlosser
+* New API (`ShowTip()` instead of `showTip()`)
+* Add icon selection (none, info, warning, error, EventGhost)
+* Optionally disable notification sound
 
 ### v0.0.1 - 2017-08-21
 
