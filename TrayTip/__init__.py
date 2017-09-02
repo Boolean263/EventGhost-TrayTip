@@ -18,7 +18,6 @@
 
 import eg
 
-
 eg.RegisterPlugin(
     name="TrayTip",
     author=(
@@ -67,6 +66,7 @@ class Text(eg.TranslatableStrings):
         sound_lbl = "Play Sound"
 
 class TrayTip(eg.PluginBase):
+    "Action plugin to show a message in the Windows Action Center."
     text = Text
     payloads = {}
 
@@ -97,9 +97,6 @@ class TrayTip(eg.PluginBase):
         del self.payloads[hwnd]
 
     def OnNotify(self, hwnd, msg, wParam, lParam):
-        # eg.PrintNotice("Notify: msg={:08X} wparam={:08X} lparam={:08X}"
-        # .format(msg, wparam, lparam))
-
         if msg == WM_TRAYICON:
             if hwnd in self.payloads:
                 payload = self.payloads[hwnd]
@@ -126,6 +123,22 @@ class ShowTip(eg.ActionBase):
     ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG, ICON_CUSTOM = range(len(iconOpts))
 
     def __call__(self, title="", msg="", payload=None, iconOpt=ICON_EG, sound=True):
+        """
+        Show a tip balloon in the Windows Event Center.
+
+        title: Bold text to show in the title of the tip.
+        msg: Detail text to show in the tip.
+        payload: Python data to include with events triggered from this tip.
+        iconOpt: an int or a string:
+          0 = No icon
+          1 = Info icon
+          2 = Warning icon
+          3 = Error icon
+          4 = EventGhost icon
+          string = *full path* to an icon file, a semicolon, and the icon number
+            (eg: "C:\\Windows\\system32\\shell32.dll;13")
+        sound: Whether to play the notification sound.
+        """
         if iconOpt is None:
             iconOpt = self.ICON_EG
         title = eg.ParseString(title or "EventGhost")
@@ -201,6 +214,8 @@ class ShowTip(eg.ActionBase):
                 dwInfoFlags
             )
         )
+        if hicon is not None:
+            win32gui.DestroyIcon(hicon)
 
         # Window destruction is taken care of in the parent class
 
@@ -285,6 +300,12 @@ class ShowTip(eg.ActionBase):
         del _traytip_iconFile
 
 def pickIcon(filename, index=0):
+    """
+    Open the Windows icon picker dialog, starting from the given filename
+    and optional index into the icon list in that file (index defaults to 0).
+    Returns (filename, index) for the icon the user chose
+    (or its input parameters if the user cancelled).
+    """
     PickIconDlg = ctypes.windll.shell32.PickIconDlg
     PickIconDlg.argtypes = [
             ctypes.wintypes.HWND,
