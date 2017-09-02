@@ -73,7 +73,8 @@ Boolean263, aka David Perry, and Kevin Schlosser
 * TODO: update the above info before release
 * Improvements from kgschlosser
 * New API (`ShowTip()` instead of `showTip()`)
-* Add icon selection (none, info, warning, error, EventGhost)
+* Add icon selection (none, info, warning, error, EventGhost, custom)
+  and icon chooser for custom icons
 * Optionally disable notification sound
 
 ### v0.0.1 - 2017-08-21

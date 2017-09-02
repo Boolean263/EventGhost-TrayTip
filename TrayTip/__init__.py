@@ -39,6 +39,7 @@ import win32con # NOQA
 import winerror # NOQA
 import sys # NOQA
 import os # NOQA
+import ctypes # NOQA
 
 # Windows constants
 WM_TRAYICON = win32con.WM_USER + 20
@@ -120,9 +121,9 @@ class TrayTip(eg.PluginBase):
                 win32gui.DestroyWindow(hwnd)
 
 class ShowTip(eg.ActionBase):
-    iconOpts = ("None", "Info", "Warning", "Error", "EventGhost")
+    iconOpts = ("None", "Info", "Warning", "Error", "EventGhost", "Custom")
     # Since I hate magic constants
-    ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG = range(len(iconOpts))
+    ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG, ICON_CUSTOM = range(len(iconOpts))
 
     def __call__(self, title="", msg="", payload=None, iconOpt=ICON_EG, sound=True):
         if iconOpt is None:
@@ -169,17 +170,14 @@ class ShowTip(eg.ActionBase):
                     True
                 )
                 dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
-            elif isinstance(iconOpt, basestring): #TODO
-                icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
-                hicon = win32gui.LoadImage(
-                    self.plugin.hinst,
-                    0,
-                    win32con.IMAGE_ICON,
-                    0,
-                    0,
-                    icon_flags
-                )
-        except:
+            elif isinstance(iconOpt, basestring):
+                filename, idx = iconOpt.split(";", 1)
+                lib = win32api.LoadLibrary(filename)
+                hicon = win32gui.LoadIcon(lib, int(idx)+1)
+                dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
+                win32api.FreeLibrary(lib)
+        except Exception as ex:
+            eg.PrintError(str(ex))
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
         if not sound:
             dwInfoFlags |= NIIF_NOSOUND
@@ -213,6 +211,14 @@ class ShowTip(eg.ActionBase):
         text = self.text
         panel = eg.ConfigPanel(self)
 
+        # Use a global to work around issues with closures in 2.x
+        global _traytip_iconFile
+        _traytip_iconFile = [ os.path.join(eg.mainDir, "EventGhost.exe"), 0 ]
+        if isinstance(iconOpt, basestring):
+            _traytip_iconFile = list(iconOpt.split(";",1))
+            _traytip_iconFile[1] = int(_traytip_iconFile[1])
+            iconOpt = self.ICON_CUSTOM
+
         title_st = panel.StaticText(text.title_lbl)
         title_ctrl = panel.TextCtrl(title)
         msg_st = panel.StaticText(text.message_lbl)
@@ -222,6 +228,26 @@ class ShowTip(eg.ActionBase):
         iconOpt_st = panel.StaticText(text.iconOpt_lbl)
         iconOpt_ctrl = panel.Choice(iconOpt, choices=self.iconOpts)
         sound_ctrl = panel.CheckBox(sound, text.sound_lbl)
+        iconPath_ctrl = panel.Button(label="", size=wx.Size(32,32), style=wx.BU_NOTEXT)
+
+        # It's a bit ugly IMHO to close around the above controls
+        # with function definitions like this. But it works, at least for now.
+        def updateIconPath():
+            icon = wx.IconFromLocation(wx.IconLocation(*_traytip_iconFile))
+            iconPath_ctrl.SetBitmap(wx.BitmapFromIcon(icon))
+        def onIconPath(event):
+            iconOpt_ctrl.SetValue(self.ICON_CUSTOM)
+            global _traytip_iconFile
+            # This is the part that fails if _traytip_iconFile isn't global
+            _traytip_iconFile = list( pickIcon(*_traytip_iconFile) )
+            updateIconPath()
+        def onIconOpt(event):
+            if event.GetInt() == self.ICON_CUSTOM:
+                onIconPath(None)
+
+        iconPath_ctrl.Bind(wx.EVT_BUTTON, onIconPath)
+        iconOpt_ctrl.Bind(wx.EVT_CHOICE, onIconOpt)
+        updateIconPath()
 
         eg.EqualizeWidths((title_st, msg_st, payload_st, iconOpt_st))
         eg.EqualizeWidths((title_ctrl, msg_ctrl, payload_ctrl))
@@ -229,6 +255,7 @@ class ShowTip(eg.ActionBase):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(iconOpt_st, 0, wx.EXPAND | wx.ALL, 5)
         sizer.Add(iconOpt_ctrl, 0, wx.ALL, 5)
+        sizer.Add(iconPath_ctrl, 0, wx.EXPAND | wx.ALL, 5)
         panel.sizer.Add(sizer, 0, wx.EXPAND)
 
         for (st, ctrl) in (
@@ -244,14 +271,34 @@ class ShowTip(eg.ActionBase):
         panel.sizer.Add(sound_ctrl)
 
         while panel.Affirmed():
+            if iconOpt_ctrl.GetValue() != self.ICON_CUSTOM:
+                newicon = iconOpt_ctrl.GetValue()
+            else:
+                newicon = ";".join(str(x) for x in _traytip_iconFile)
             panel.SetResult(
                 title_ctrl.GetValue(),
                 msg_ctrl.GetValue(),
                 payload_ctrl.GetValue(),
-                iconOpt_ctrl.GetValue(),
+                newicon,
                 sound_ctrl.GetValue(),
             )
+        del _traytip_iconFile
 
+def pickIcon(filename, index=0):
+    PickIconDlg = ctypes.windll.shell32.PickIconDlg
+    PickIconDlg.argtypes = [
+            ctypes.wintypes.HWND,
+            ctypes.c_wchar_p,
+            ctypes.c_uint,
+            ctypes.POINTER(ctypes.c_uint)
+    ]
+    c_fn = ctypes.c_wchar_p(filename)
+    c_ix = ctypes.c_uint(index)
+
+    # If the user picks something, c_fn and c_ix change;
+    # if not, they don't
+    PickIconDlg(None, c_fn, win32con.MAX_PATH, c_ix)
+    return c_fn.value, c_ix.value
 
 #
 # Editor modelines  -  https://www.wireshark.org/tools/modelines.html
