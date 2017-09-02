@@ -248,8 +248,12 @@ class ShowTip(eg.ActionBase):
         # It's a bit ugly IMHO to close around the above controls
         # with function definitions like this. But it works, at least for now.
         def updateIconPath():
-            icon = wx.IconFromLocation(wx.IconLocation(*_traytip_iconFile))
-            iconPath_ctrl.SetBitmap(wx.BitmapFromIcon(icon))
+            if iconOpt_ctrl.GetValue() == self.ICON_CUSTOM:
+                iconPath_ctrl.Show()
+                icon = wx.IconFromLocation(wx.IconLocation(*_traytip_iconFile))
+                iconPath_ctrl.SetBitmap(wx.BitmapFromIcon(icon))
+            else:
+                iconPath_ctrl.Hide()
         def onIconPath(event):
             iconOpt_ctrl.SetValue(self.ICON_CUSTOM)
             global _traytip_iconFile
@@ -259,10 +263,11 @@ class ShowTip(eg.ActionBase):
         def onIconOpt(event):
             if event.GetInt() == self.ICON_CUSTOM:
                 onIconPath(None)
+            else:
+                iconPath_ctrl.Hide()
 
         iconPath_ctrl.Bind(wx.EVT_BUTTON, onIconPath)
         iconOpt_ctrl.Bind(wx.EVT_CHOICE, onIconOpt)
-        updateIconPath()
 
         eg.EqualizeWidths((title_st, msg_st, payload_st, iconOpt_st))
         eg.EqualizeWidths((title_ctrl, msg_ctrl, payload_ctrl))
@@ -270,7 +275,7 @@ class ShowTip(eg.ActionBase):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(iconOpt_st, 0, wx.EXPAND | wx.ALL, 5)
         sizer.Add(iconOpt_ctrl, 0, wx.ALL, 5)
-        sizer.Add(iconPath_ctrl, 0, wx.EXPAND | wx.ALL, 5)
+        sizer.Add(iconPath_ctrl, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALL, 5)
         panel.sizer.Add(sizer, 0, wx.EXPAND)
 
         for (st, ctrl) in (
@@ -284,6 +289,8 @@ class ShowTip(eg.ActionBase):
             panel.sizer.Add(sizer, 0, wx.EXPAND)
 
         panel.sizer.Add(sound_ctrl)
+
+        updateIconPath()
 
         while panel.Affirmed():
             if iconOpt_ctrl.GetValue() != self.ICON_CUSTOM:
