@@ -18,25 +18,38 @@ but you can also click it to generate an event.
 ## Usage
 
 Adding a TrayTip action to your EventGhost macro is no different from
-most other actions. The configuration dialog prompts you for three items:
+most other actions. The configuration dialog prompts you for several items:
 
+* Icon: the icon you wish to appear on the pop-up. Supports built-in values
+  for no icon, info, warning, error, and the EventGhost icon, as well as
+  letting you choose a custom icon from a EXE, DLL, or ICO file.
 * Title: this is typically shown in a large, bold font.
 * Message: some more detail about what you're telling the user.
 * Payload: an optional string payload to include in generated events
-  (see below)
+  (see below).
+* Sound: whether to play the default notification sound or not.
 
-All three items are parsed for python code wrapped in {curly braces}.
-If you want to include an actual curly brace, you need to double it up,
-as in "{{".
+The title, message, and payload are parsed for python code wrapped in {curly
+braces}.  If you want to include an actual curly brace, you need to double it
+up, as in "{{".
 
-You can also call `eg.plugins.TrayTip.showTip(title, msg, payload)`
+You can also call
+`eg.plugins.TrayTip.ShowTip(title, msg, payload, iconOpt, sound)`
 directly from a python script action if you wish. The payload is still
-optional, and doesn't have to be a string.
+optional, and doesn't have to be a string (but is only parsed for python
+if it is a string). If iconOpt and sound aren't specified, they respectively
+default to the EventGhost icon and sound enabled.
 
-If the user clicks on the notification that gets popped up by this plugin,
-the plugin will generate a `TrayTip.Clicked` event with the specified
-payload. You can access this payload from an action using `eg.event.payload`.
-If the notification is left to vanish on its own, no event is generated.
+This plugin can generate four different types of event for each notification
+shown. In all cases, the event will have the payload you specified, which
+can be accesseed from an action by using `eg.event.payload`.
+
+* `TrayTip.Show`: a new notification is being shown to the user.
+* `TrayTip.Hide`: the notification is being hidden.
+* `TrayTip.TimedOut`: the notification went away without being clicked.
+* `TrayTip.Clicked`: the user clicked the notification. This is probably
+  the most useful one to use in your other actions, since it's the only one
+  that indicates actual user activity.
 
 There is currently no way to distinguish what notification was clicked on
 by reading the event object, apart from using a known value that you
@@ -55,10 +68,6 @@ this project,
 
 ## Future Improvements
 
-It would be useful to make configurable the icon which shows in the
-notification. Currently it's hard-coded to use the EventGhost icon.
-This shouldn't be hard, I just haven't gotten that far yet.
-
 It would be really useful to create notifications that persist in the
 Windows 10 Action Center. I haven't found information on how to do that yet.
 
@@ -68,10 +77,10 @@ Boolean263, aka David Perry, and Kevin Schlosser
 
 ## Changelog
 
-### v0.1.0 - not yet released
+### v0.1.0 - 2017-09-02
 
-* TODO: update the above info before release
 * Improvements from kgschlosser
+* Generate events for all actions (though Clicked is still the mos useful)
 * New API (`ShowTip()` instead of `showTip()`)
 * Add icon selection (none, info, warning, error, EventGhost, custom)
   and icon chooser for custom icons
