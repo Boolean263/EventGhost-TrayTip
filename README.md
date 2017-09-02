@@ -80,11 +80,14 @@ Boolean263, aka David Perry, and Kevin Schlosser
 ### v0.1.0 - 2017-09-02
 
 * Improvements from kgschlosser
-* Generate events for all actions (though Clicked is still the mos useful)
+* Generate events for all actions (though Clicked is still the most useful)
 * New API (`ShowTip()` instead of `showTip()`)
 * Add icon selection (none, info, warning, error, EventGhost, custom)
   and icon chooser for custom icons
 * Optionally disable notification sound
+* Clean up resource leaks
+* Some work to help the plugin deactivate cleanly if it's deactivated
+  while a notification is still visible
 
 ### v0.0.1 - 2017-08-21
 

@@ -86,7 +86,21 @@ class TrayTip(eg.PluginBase):
         self.classAtom = win32gui.RegisterClass(wc)
 
     def __stop__(self):
-        self.classAtom = win32gui.UnregisterClass(self.classAtom, self.hinst)
+        while True:
+            try:
+                win32gui.UnregisterClass(self.classAtom, self.hinst)
+            except win32gui.error as e:
+                if e.winerror == 1412:
+                    # "Class still has open windows."
+                    # So let's wait for the notification to go away.
+                    eg.plugins.EventGhost.Wait(1.0)
+                    continue
+                else:
+                    raise e
+            # No exception, so exit the loop.
+            break
+        del self.classAtom
+        #eg.Print("Class unregistered")
 
     def setPayload(self, hwnd, payload=None):
         self.payloads[hwnd] = payload
