@@ -23,6 +23,7 @@ eg.RegisterPlugin(
     author=(
         "David Perry <d.perry@utoronto.ca>",
         "kdschlosser",
+        "topic2k",
     ),
     version="0.1.2",
     kind="other",
