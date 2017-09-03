@@ -199,13 +199,23 @@ class ShowTip(eg.ActionBase):
                 dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
             elif isinstance(iconOpt, basestring):
                 filename, idx = iconOpt.split(";", 1)
-                lib = win32api.LoadLibrary(filename)
-                hicon = win32gui.LoadIcon(lib, int(idx)+1)
                 dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
-                win32api.FreeLibrary(lib)
+                if filename[-4:].upper() == ".ICO":
+                    hicon = win32gui.LoadImage(
+                        win32api.GetModuleHandle(None),
+                        filename,
+                        win32con.IMAGE_ICON,
+                        0, 0,
+                        win32con.LR_LOADFROMFILE|win32con.LR_LOADREALSIZE,
+                    )
+                else:
+                    lib = win32api.LoadLibrary(filename)
+                    hicon = win32gui.LoadIcon(lib, int(idx)+1)
+                    win32api.FreeLibrary(lib)
         except Exception as ex:
             eg.PrintError(str(ex))
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+            dwInfoFlags = 0x00
         if not sound:
             dwInfoFlags |= NIIF_NOSOUND
         flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
