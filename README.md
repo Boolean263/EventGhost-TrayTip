@@ -71,11 +71,20 @@ this project,
 It would be really useful to create notifications that persist in the
 Windows 10 Action Center. I haven't found information on how to do that yet.
 
+I'm told you can add buttons to notification pop-ups. That'd be cool too.
+
 ## Authors
 
 Boolean263, aka David Perry, and Kevin Schlosser
 
 ## Changelog
+
+### v0.1.1 - 2017-09-03
+
+* Bugfix: load .ICO files properly
+* Hide configuration dialog while the icon chooser is visible, to prevent
+  users from closing the configuration dialog with the icon chooser still
+  visible (thus causing an EventGhost crash)
 
 ### v0.1.0 - 2017-09-02
 
