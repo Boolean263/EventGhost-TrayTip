@@ -75,9 +75,15 @@ I'm told you can add buttons to notification pop-ups. That'd be cool too.
 
 ## Authors
 
-Boolean263, aka David Perry, and Kevin Schlosser
+* Boolean263, aka David Perry
+* Kevin Schlosser
+* topic2k
 
 ## Changelog
+
+### v0.1.2 - 2017-09-03
+
+* Expand path variables (like `%SystemRoot%`) in icon paths (thanks topic2k)
 
 ### v0.1.1 - 2017-09-03
 

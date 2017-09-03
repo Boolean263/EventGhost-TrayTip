@@ -24,7 +24,7 @@ eg.RegisterPlugin(
         "David Perry <d.perry@utoronto.ca>",
         "kdschlosser",
     ),
-    version="0.1.1",
+    version="0.1.2",
     kind="other",
     description="Show notices in the system tray.",
     url="https://github.com/Boolean263/EventGhost-TrayTip",
