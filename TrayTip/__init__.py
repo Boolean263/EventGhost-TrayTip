@@ -281,8 +281,10 @@ class ShowTip(eg.ActionBase):
         def onIconPath(event):
             iconOpt_ctrl.SetValue(self.ICON_CUSTOM)
             global _traytip_iconFile
+            panel.dialog.Hide()
             # This is the part that fails if _traytip_iconFile isn't global
             _traytip_iconFile = list( pickIcon(*_traytip_iconFile) )
+            panel.dialog.Show()
             updateIconPath()
         def onIconOpt(event):
             if event.GetInt() == self.ICON_CUSTOM:
