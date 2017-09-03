@@ -39,6 +39,7 @@ import winerror # NOQA
 import sys # NOQA
 import os # NOQA
 import ctypes # NOQA
+from os.path import expandvars  # NOQA
 
 # Windows constants
 WM_TRAYICON = win32con.WM_USER + 20
@@ -199,6 +200,7 @@ class ShowTip(eg.ActionBase):
                 dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
             elif isinstance(iconOpt, basestring):
                 filename, idx = iconOpt.split(";", 1)
+                filename = expandvars(filename)
                 dwInfoFlags = NIIF_USER|NIIF_LARGE_ICON
                 if filename[-4:].upper() == ".ICO":
                     hicon = win32gui.LoadImage(
