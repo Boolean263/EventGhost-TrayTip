@@ -57,13 +57,23 @@ NIIF_NOSOUND = 0x10
 NIIF_LARGE_ICON = 0x20
 NIIF_RESPECT_QUIET_TIME = 0x80
 
+EVENTS = {
+    NIN_BALLOONSHOW: "Show",
+    NIN_BALLOONHIDE: "Hide",
+    NIN_BALLOONTIMEOUT: "TimedOut",
+    NIN_BALLOONUSERCLICK: "Clicked"
+}
+print EVENTS
+
+
 class Text(eg.TranslatableStrings):
     class ShowTip:
         name = "Show system tray message"
         description = "Shows a message in the Windows Action Center."
         title_lbl = "Title"
         message_lbl = "Message"
-        payload_lbl = "Event payload (optional)"
+        as_suffix_lbl = "Eventsuffix (optional)"
+        as_payload_lbl = "Payload (optional)"
         iconOpt_lbl = "Icon"
         sound_lbl = "Play Sound"
 
@@ -104,8 +114,8 @@ class TrayTip(eg.PluginBase):
         del self.classAtom
         #eg.Print("Class unregistered")
 
-    def setPayload(self, hwnd, payload=None):
-        self.payloads[hwnd] = payload
+    def setPayload(self, hwnd, evt_val=None, as_payload=True):
+        self.payloads[hwnd] = (evt_val, as_payload)
 
     def OnDestroy(self, hwnd, msg, wparam, lparam):
         nid = (hwnd, 0)
@@ -115,36 +125,34 @@ class TrayTip(eg.PluginBase):
     def OnNotify(self, hwnd, msg, wParam, lParam):
         if msg == WM_TRAYICON:
             if hwnd in self.payloads:
-                payload = self.payloads[hwnd]
+                evt_val, as_payload = self.payloads[hwnd]
             else:
-                payload = None
+                evt_val = None
+                as_payload = True
 
-            if lParam == NIN_BALLOONSHOW:
-                self.TriggerEvent("Show", payload=payload)
+            if evt_val and as_payload:
+                self.TriggerEvent(EVENTS[lParam], payload=evt_val)
+            elif evt_val:
+                self.TriggerEvent(EVENTS[lParam] + '.' + evt_val)
+            else:
+                self.TriggerEvent(EVENTS[lParam])
 
-            elif lParam == NIN_BALLOONHIDE:
-                self.TriggerEvent("Hide", payload=payload)
-
-            elif lParam == NIN_BALLOONTIMEOUT:
-                self.TriggerEvent("TimedOut", payload=payload)
+            if lParam in (NIN_BALLOONTIMEOUT, NIN_BALLOONUSERCLICK):
                 win32gui.DestroyWindow(hwnd)
 
-            elif lParam == NIN_BALLOONUSERCLICK:
-                self.TriggerEvent("Clicked", payload=payload)
-                win32gui.DestroyWindow(hwnd)
 
 class ShowTip(eg.ActionBase):
     iconOpts = ("None", "Info", "Warning", "Error", "EventGhost", "Custom")
     # Since I hate magic constants
     ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG, ICON_CUSTOM = range(len(iconOpts))
 
-    def __call__(self, title="", msg="", payload=None, iconOpt=ICON_EG, sound=True):
+    def __call__(self, title="", msg="", evt_val=None, iconOpt=ICON_EG, sound=True, as_payload=True):
         """
         Show a tip balloon in the Windows Event Center.
 
         title: Bold text to show in the title of the tip.
         msg: Detail text to show in the tip.
-        payload: Python data to include with events triggered from this tip.
+        evt_val: Python data to include with events triggered from this tip.
         iconOpt: an int or a string:
           0 = No icon
           1 = Info icon
@@ -159,8 +167,8 @@ class ShowTip(eg.ActionBase):
             iconOpt = self.ICON_EG
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
-        if payload and isinstance(payload, basestring):
-            payload = eg.ParseString(payload)
+        if evt_val and isinstance(evt_val, basestring):
+            evt_val = eg.ParseString(evt_val)
 
         # https://stackoverflow.com/a/17262942/6692652
         # Create the window.
@@ -179,7 +187,7 @@ class ShowTip(eg.ActionBase):
             None
         )
         win32gui.UpdateWindow(hwnd)
-        self.plugin.setPayload(hwnd, payload)
+        self.plugin.setPayload(hwnd, evt_val, as_payload)
 
         # Icons management
         # Default to no icon if something goes weird
@@ -265,8 +273,11 @@ class ShowTip(eg.ActionBase):
         title_ctrl = panel.TextCtrl(title)
         msg_st = panel.StaticText(text.message_lbl)
         msg_ctrl = panel.TextCtrl(msg)
-        payload_st = panel.StaticText(text.payload_lbl)
-        payload_ctrl = panel.TextCtrl(payload)
+        payload_chc = panel.Choice(
+            int(as_payload),
+            (text.as_suffix_lbl, text.as_payload_lbl),
+        )
+        payload_ctrl = panel.TextCtrl(evt_val)
         iconOpt_st = panel.StaticText(text.iconOpt_lbl)
         iconOpt_ctrl = panel.Choice(iconOpt, choices=self.iconOpts)
         sound_ctrl = panel.CheckBox(sound, text.sound_lbl)
@@ -298,19 +309,19 @@ class ShowTip(eg.ActionBase):
         iconPath_ctrl.Bind(wx.EVT_BUTTON, onIconPath)
         iconOpt_ctrl.Bind(wx.EVT_CHOICE, onIconOpt)
 
-        eg.EqualizeWidths((title_st, msg_st, payload_st, iconOpt_st))
+        eg.EqualizeWidths((title_st, msg_st, payload_chc, iconOpt_st))
         eg.EqualizeWidths((title_ctrl, msg_ctrl, payload_ctrl))
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(iconOpt_st, 0, wx.EXPAND | wx.ALL, 5)
-        sizer.Add(iconOpt_ctrl, 0, wx.ALL, 5)
-        sizer.Add(iconPath_ctrl, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALL, 5)
+        sizer.Add(iconOpt_st, 0, wx.EXPAND | wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+        sizer.Add(iconOpt_ctrl, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+        sizer.Add(iconPath_ctrl, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
         panel.sizer.Add(sizer, 0, wx.EXPAND)
 
         for (st, ctrl) in (
                 (title_st, title_ctrl),
                 (msg_st, msg_ctrl),
-                (payload_st, payload_ctrl),
+                (payload_chc, payload_ctrl),
         ):
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.Add(st, 0, wx.EXPAND | wx.ALL, 5)
@@ -332,6 +343,7 @@ class ShowTip(eg.ActionBase):
                 payload_ctrl.GetValue(),
                 newicon,
                 sound_ctrl.GetValue(),
+                bool(payload_chc.GetSelection())
             )
         del _traytip_iconFile
 
