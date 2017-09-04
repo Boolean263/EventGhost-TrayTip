@@ -63,7 +63,6 @@ EVENTS = {
     NIN_BALLOONTIMEOUT: "TimedOut",
     NIN_BALLOONUSERCLICK: "Clicked"
 }
-print EVENTS
 
 
 class Text(eg.TranslatableStrings):
