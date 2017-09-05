@@ -25,36 +25,42 @@ most other actions. The configuration dialog prompts you for several items:
   letting you choose a custom icon from a EXE, DLL, or ICO file.
 * Title: this is typically shown in a large, bold font.
 * Message: some more detail about what you're telling the user.
-* Payload: an optional string payload to include in generated events
-  (see below).
+* Event Suffix: an optional string to add to the generated events (see below)
+  to distinguish them.
+* Payload: an optional string payload to include in generated events.
 * Sound: whether to play the default notification sound or not.
 
-The title, message, and payload are parsed for python code wrapped in {curly
-braces}.  If you want to include an actual curly brace, you need to double it
-up, as in "{{".
+The title, message, event suffix, and payload are parsed for python code
+wrapped in {curly braces}.  If you want to include an actual curly brace, you
+need to double it up, as in "{{".
 
 You can also call
-`eg.plugins.TrayTip.ShowTip(title, msg, payload, iconOpt, sound)`
-directly from a python script action if you wish. The payload is still
-optional, and doesn't have to be a string (but is only parsed for python
-if it is a string). If iconOpt and sound aren't specified, they respectively
-default to the EventGhost icon and sound enabled.
+`eg.plugins.TrayTip.ShowTip(title, msg, event_name, payload, iconOpt, sound)`
+directly from a python script action if you wish. The event name and payload
+are still optional, and the payload doesn't have to be a string (but is only
+parsed for python if it is a string). If iconOpt and sound aren't specified,
+they respectively default to the EventGhost icon and sound enabled.
 
 This plugin can generate four different types of event for each notification
 shown. In all cases, the event will have the payload you specified, which
 can be accesseed from an action by using `eg.event.payload`.
 
-* `TrayTip.Show`: a new notification is being shown to the user.
-* `TrayTip.Hide`: the notification is being hidden.
-* `TrayTip.TimedOut`: the notification went away without being clicked.
-* `TrayTip.Clicked`: the user clicked the notification. This is probably
-  the most useful one to use in your other actions, since it's the only one
-  that indicates actual user activity.
+* `TrayTip.Show[.event_name]`: a new notification is being shown to the user.
+* `TrayTip.Hide[.event_name]`: the notification is being hidden.
+* `TrayTip.TimedOut[.event_name]`: the notification went away without being
+  clicked.
+* `TrayTip.Clicked[.event_name]`: the user clicked the notification. This is
+  probably the most useful one to use in your other actions, since it's the
+  only one that indicates actual user activity.
 
-There is currently no way to distinguish what notification was clicked on
-by reading the event object, apart from using a known value that you
-put in the payload. If you think of other useful information that could
-be added to the payload, let me know.
+Although the event suffix is technically optional, you should generally give
+a suffix to each of your TrayTip actions. This way, when an event is triggered,
+you can easily tell which action caused it by checking the name in the event.
+
+Before version 0.2.0, there was no event name option, and the only way to
+tell which action generated which tray tip was to check the event payload.
+This is no longer the case, but the payload field remains in case it is
+useful.
 
 ## Downloads and Support
 
@@ -71,7 +77,8 @@ this project,
 It would be really useful to create notifications that persist in the
 Windows 10 Action Center. I haven't found information on how to do that yet.
 
-I'm told you can add buttons to notification pop-ups. That'd be cool too.
+I'm told you can add buttons to notification pop-ups. That'd be cool too,
+if I can learn how to make that happen.
 
 ## Authors
 
@@ -80,6 +87,11 @@ I'm told you can add buttons to notification pop-ups. That'd be cool too.
 * topic2k
 
 ## Changelog
+
+### v0.2.0 - 2017-09-05
+
+* Add configurable event name (thanks topic2k)
+* Slight code optimization (thanks topic2k)
 
 ### v0.1.2 - 2017-09-03
 

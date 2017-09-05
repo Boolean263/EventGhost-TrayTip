@@ -25,7 +25,7 @@ eg.RegisterPlugin(
         "kdschlosser",
         "topic2k",
     ),
-    version="0.1.2",
+    version="0.2.0",
     kind="other",
     description="Show notices in the system tray.",
     url="https://github.com/Boolean263/EventGhost-TrayTip",
@@ -71,8 +71,8 @@ class Text(eg.TranslatableStrings):
         description = "Shows a message in the Windows Action Center."
         title_lbl = "Title"
         message_lbl = "Message"
-        as_suffix_lbl = "Eventsuffix (optional)"
-        as_payload_lbl = "Payload (optional)"
+        suffix_lbl = "Event Suffix (optional)"
+        payload_lbl = "Payload (optional)"
         iconOpt_lbl = "Icon"
         sound_lbl = "Play Sound"
 
@@ -113,28 +113,27 @@ class TrayTip(eg.PluginBase):
         del self.classAtom
         #eg.Print("Class unregistered")
 
-    def setPayload(self, hwnd, evt_val=None, as_payload=True):
-        self.payloads[hwnd] = (evt_val, as_payload)
+    def setPayload(self, hwnd, event_name=None, payload=None):
+        self.payloads[hwnd] = (event_name, payload)
 
     def OnDestroy(self, hwnd, msg, wparam, lparam):
         nid = (hwnd, 0)
         win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
-        del self.payloads[hwnd]
+        if hwnd in self.payloads:
+            del self.payloads[hwnd]
 
     def OnNotify(self, hwnd, msg, wParam, lParam):
-        if msg == WM_TRAYICON:
+        if msg == WM_TRAYICON and lParam in EVENTS.keys():
             if hwnd in self.payloads:
-                evt_val, as_payload = self.payloads[hwnd]
+                event_name, payload = self.payloads[hwnd]
             else:
-                evt_val = None
-                as_payload = True
+                event_name = None
+                payload = None
 
-            if evt_val and as_payload:
-                self.TriggerEvent(EVENTS[lParam], payload=evt_val)
-            elif evt_val:
-                self.TriggerEvent(EVENTS[lParam] + '.' + evt_val)
+            if event_name:
+                self.TriggerEvent(EVENTS[lParam]+'.'+event_name, payload=payload)
             else:
-                self.TriggerEvent(EVENTS[lParam])
+                self.TriggerEvent(EVENTS[lParam], payload=payload)
 
             if lParam in (NIN_BALLOONTIMEOUT, NIN_BALLOONUSERCLICK):
                 win32gui.DestroyWindow(hwnd)
@@ -145,13 +144,14 @@ class ShowTip(eg.ActionBase):
     # Since I hate magic constants
     ICON_NONE, ICON_INFO, ICON_WARNING, ICON_ERROR, ICON_EG, ICON_CUSTOM = range(len(iconOpts))
 
-    def __call__(self, title="", msg="", evt_val=None, iconOpt=ICON_EG, sound=True, as_payload=True):
+    def __call__(self, title="", msg="", event_name=None, payload=None, iconOpt=ICON_EG, sound=True):
         """
         Show a tip balloon in the Windows Event Center.
 
         title: Bold text to show in the title of the tip.
         msg: Detail text to show in the tip.
-        evt_val: Python data to include with events triggered from this tip.
+        event_name: Optional label to add to the event to make it unique.
+        payload: Python data to include with events triggered from this tip.
         iconOpt: an int or a string:
           0 = No icon
           1 = Info icon
@@ -166,8 +166,9 @@ class ShowTip(eg.ActionBase):
             iconOpt = self.ICON_EG
         title = eg.ParseString(title or "EventGhost")
         msg = eg.ParseString(msg or "This is a notification from EventGhost.")
-        if evt_val and isinstance(evt_val, basestring):
-            evt_val = eg.ParseString(evt_val)
+        event_name = eg.ParseString(event_name)
+        if payload and isinstance(payload, basestring):
+            payload = eg.ParseString(payload)
 
         # https://stackoverflow.com/a/17262942/6692652
         # Create the window.
@@ -186,7 +187,7 @@ class ShowTip(eg.ActionBase):
             None
         )
         win32gui.UpdateWindow(hwnd)
-        self.plugin.setPayload(hwnd, evt_val, as_payload)
+        self.plugin.setPayload(hwnd, event_name, payload)
 
         # Icons management
         # Default to no icon if something goes weird
@@ -253,14 +254,14 @@ class ShowTip(eg.ActionBase):
 
         # Window destruction is taken care of in the parent class
 
-    def GetLabel(self, title, msg, payload, iconOpt=None, sound=True):
+    def GetLabel(self, title, msg, event_name, payload, iconOpt=None, sound=True):
         return "\"{}\" ({}) {}".format(title, msg, repr(payload))
 
-    def Configure(self, title="", msg="", payload="", iconOpt=ICON_EG, sound=True):
+    def Configure(self, title="", msg="", event_name="", payload="", iconOpt=ICON_EG, sound=True):
         text = self.text
         panel = eg.ConfigPanel(self)
 
-        # Use a global to work around issues with closures in 2.x
+        # Use a global to work around issues with closures in Python 2.x
         global _traytip_iconFile
         _traytip_iconFile = [ os.path.join(eg.mainDir, "EventGhost.exe"), 0 ]
         if isinstance(iconOpt, basestring):
@@ -272,11 +273,10 @@ class ShowTip(eg.ActionBase):
         title_ctrl = panel.TextCtrl(title)
         msg_st = panel.StaticText(text.message_lbl)
         msg_ctrl = panel.TextCtrl(msg)
-        payload_chc = panel.Choice(
-            int(as_payload),
-            (text.as_suffix_lbl, text.as_payload_lbl),
-        )
-        payload_ctrl = panel.TextCtrl(evt_val)
+        suffix_st = panel.StaticText(text.suffix_lbl)
+        suffix_ctrl = panel.TextCtrl(event_name)
+        payload_st = panel.StaticText(text.payload_lbl)
+        payload_ctrl = panel.TextCtrl(payload)
         iconOpt_st = panel.StaticText(text.iconOpt_lbl)
         iconOpt_ctrl = panel.Choice(iconOpt, choices=self.iconOpts)
         sound_ctrl = panel.CheckBox(sound, text.sound_lbl)
@@ -308,7 +308,7 @@ class ShowTip(eg.ActionBase):
         iconPath_ctrl.Bind(wx.EVT_BUTTON, onIconPath)
         iconOpt_ctrl.Bind(wx.EVT_CHOICE, onIconOpt)
 
-        eg.EqualizeWidths((title_st, msg_st, payload_chc, iconOpt_st))
+        eg.EqualizeWidths((title_st, msg_st, suffix_st, payload_st, iconOpt_st))
         eg.EqualizeWidths((title_ctrl, msg_ctrl, payload_ctrl))
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -320,7 +320,8 @@ class ShowTip(eg.ActionBase):
         for (st, ctrl) in (
                 (title_st, title_ctrl),
                 (msg_st, msg_ctrl),
-                (payload_chc, payload_ctrl),
+                (suffix_st, suffix_ctrl),
+                (payload_st, payload_ctrl),
         ):
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.Add(st, 0, wx.EXPAND | wx.ALL, 5)
@@ -339,10 +340,10 @@ class ShowTip(eg.ActionBase):
             panel.SetResult(
                 title_ctrl.GetValue(),
                 msg_ctrl.GetValue(),
+                suffix_ctrl.GetValue(),
                 payload_ctrl.GetValue(),
                 newicon,
                 sound_ctrl.GetValue(),
-                bool(payload_chc.GetSelection())
             )
         del _traytip_iconFile
 
