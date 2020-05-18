@@ -88,6 +88,10 @@ if I can learn how to make that happen.
 
 ## Changelog
 
+### v0.2.1 - 2020-03-28
+
+* Support multi-line messages (thanks Kevin)
+
 ### v0.2.0 - 2017-09-05
 
 * Add configurable event name (thanks topic2k)

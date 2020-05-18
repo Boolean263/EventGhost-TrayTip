@@ -25,7 +25,7 @@ eg.RegisterPlugin(
         "kdschlosser",
         "topic2k",
     ),
-    version="0.2.0",
+    version="0.2.1",
     kind="other",
     description="Show notices in the system tray.",
     url="https://github.com/Boolean263/EventGhost-TrayTip",
@@ -272,7 +272,7 @@ class ShowTip(eg.ActionBase):
         title_st = panel.StaticText(text.title_lbl)
         title_ctrl = panel.TextCtrl(title)
         msg_st = panel.StaticText(text.message_lbl)
-        msg_ctrl = panel.TextCtrl(msg)
+        msg_ctrl = panel.TextCtrl(msg, style=wx.TE_MULTILINE)
         suffix_st = panel.StaticText(text.suffix_lbl)
         suffix_ctrl = panel.TextCtrl(event_name)
         payload_st = panel.StaticText(text.payload_lbl)
